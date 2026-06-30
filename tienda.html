@@ -175,6 +175,15 @@ header nav a:hover { color: #000; }
   font-size: .7rem; padding: 2px 8px; border: 1px solid #ddd; border-radius: 2px;
   color: #666; font-weight: 500;
 }
+.stock-badge { font-size: .65rem; padding: 2px 6px; border-radius: 2px; margin-left: 2px; }
+.stock-ok { background: #e6f7e6; color: #2e7d32; }
+.stock-low { background: #fff3e0; color: #e65100; }
+.stock-out { background: #fce4ec; color: #c62828; }
+.sell-btn {
+  background: none; border: 1px solid #4caf50; color: #4caf50; padding: 4px 10px;
+  cursor: pointer; font-size: .7rem; font-family: inherit; transition: all .2s;
+}
+.sell-btn:hover { background: #4caf50; color: #fff; }
 .btn-comprar {
   width: 100%; padding: .75rem; background: #000; color: #fff; border: none;
   font-size: .8rem; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
@@ -390,7 +399,7 @@ function loadProducts() {
   const local = localStorage.getItem(STORAGE_KEY);
   if (local) {
     products = JSON.parse(local);
-    products.forEach(p => { if (!p.images) { p.images = p.image ? [p.image] : []; delete p.image; } });
+    products.forEach(p => { if (!p.images) { p.images = p.image ? [p.image] : []; delete p.image; } if (!p.stock) { p.stock = {}; p.sizes.forEach(s => { p.stock[s] = 10; }); } if (!p.sales) p.sales = []; });
     saveProducts();
     render();
     return;
@@ -399,7 +408,7 @@ function loadProducts() {
     .then(r => r.ok ? r.json() : Promise.reject())
     .then(data => {
       if (data && data.length) {
-        data.forEach(p => { if (!p.images) { p.images = []; } });
+        data.forEach(p => { if (!p.images) { p.images = []; } if (!p.stock) { p.stock = {}; } if (!p.sales) p.sales = []; });
         products = data;
         saveProducts();
         render();
@@ -439,7 +448,14 @@ function render() {
         <div class="cat">${p.category}</div>
         <h3>${p.name}</h3>
         <div class="precio">Bs ${p.price.toFixed(2)}</div>
-        <div class="sizes">${p.sizes.map(s => `<span>${s}</span>`).join('')}</div>
+        <div class="sizes">${p.sizes.map(s => {
+          const q = (p.stock || {})[s];
+          let badge = '';
+          if (q === 0 || q === undefined) badge = '<span class="stock-badge stock-out">agot</span>';
+          else if (q <= 2) badge = `<span class="stock-badge stock-low">${q}</span>`;
+          else badge = `<span class="stock-badge stock-ok">${q}</span>`;
+          return `<span>${s}${badge}</span>`;
+        }).join('')}</div>
         <p style="font-size:.8rem;color:#888;margin-bottom:.5rem;">${p.desc || ''}</p>
         <button class="btn-comprar" onclick="buy('${p.name}', ${p.price})">Comprar por WhatsApp</button>
       </div>
@@ -528,17 +544,41 @@ function showPanel() {
       </div>
       <div class="full"><label>Subir fotos (desde galería)</label><input type="file" id="pImageFile" accept="image/*" multiple onchange="previewImages(event)"><div id="pImagePreviews" style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.5rem;"></div></div>
       <div class="full"><label>O URLs de imágenes (una por línea)</label><textarea id="pImageUrls" rows="2" placeholder="https://..."></textarea></div>
-      <div class="full"><label>Tallas (separadas por coma)</label><input type="text" id="pSizes" placeholder="Ej: S, M, L, XL" required></div>
+      <div class="full"><label>Tallas (separadas por coma)</label><input type="text" id="pSizes" placeholder="Ej: S, M, L, XL" required oninput="genStockFields()"></div>
+      <div class="full" id="stockFields" style="display:none;">
+        <label>Stock por talla</label>
+        <div id="stockInputs" style="display:flex;gap:.5rem;flex-wrap:wrap;"></div>
+      </div>
       <div class="full"><label>Descripción</label><textarea id="pDesc"></textarea></div>
       <div class="full"><button type="submit">Agregar Producto</button></div>
     </form>
     <div class="admin-list" id="adminList"></div>
     <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid #eee;text-align:center;">
-      <button onclick="exportJSON()" style="background:#000;color:#fff;border:none;padding:.75rem 2rem;font-size:.8rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;font-family:inherit;">Exportar JSON para publicar</button>
-      <p style="font-size:.75rem;color:#888;margin-top:.5rem;">Descarga el archivo productos.json y súbelo a tu repositorio en GitHub para que los clientes vean los cambios.</p>
+      <p style="font-size:.85rem;font-weight:500;margin-bottom:.75rem;" id="syncStatus">Productos locales: <strong id="localCount">0</strong></p>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;justify-content:center;margin-bottom:.75rem;">
+        <button onclick="showReport()" style="background:#fff;color:#000;border:1px solid #000;padding:.5rem 1.5rem;font-size:.75rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;font-family:inherit;">Reporte de Ventas</button>
+        <button onclick="checkPublished()" style="background:#000;color:#fff;border:none;padding:.5rem 1.5rem;font-size:.75rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;font-family:inherit;">Verificar publicación</button>
+      </div>
+      <button onclick="exportJSON()" style="background:#000;color:#fff;border:none;padding:.75rem 2rem;font-size:.8rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;font-family:inherit;display:block;width:100%;">Exportar JSON para publicar</button>
+      <p style="font-size:.75rem;color:#888;margin-top:.5rem;">Descarga productos.json y súbelo a GitHub para que los clientes vean los cambios.</p>
     </div>
   `;
   renderAdminList();
+}
+
+function genStockFields() {
+  const raw = document.getElementById('pSizes').value;
+  const sizes = raw.split(',').map(s => s.trim()).filter(Boolean);
+  const container = document.getElementById('stockInputs');
+  const block = document.getElementById('stockFields');
+  if (!sizes.length) { block.style.display = 'none'; return; }
+  block.style.display = 'block';
+  container.innerHTML = sizes.map(s => `
+    <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+      <span style="font-size:.75rem;font-weight:600;">${s}</span>
+      <input type="number" id="stock_${s}" value="10" min="0" style="width:60px;text-align:center;padding:.4rem;">
+    </div>
+  `).join('');
 }
 
 let uploadedImages = [];
@@ -568,6 +608,11 @@ function addProduct(e) {
   let images = [...uploadedImages];
   const urls = document.getElementById('pImageUrls').value.split('\n').map(s => s.trim()).filter(Boolean);
   images = [...images, ...urls];
+  const stock = {};
+  sizes.forEach(s => {
+    const input = document.getElementById('stock_' + s);
+    stock[s] = input ? parseInt(input.value) || 0 : 0;
+  });
   const product = {
     id: Date.now(),
     name: document.getElementById('pName').value,
@@ -575,6 +620,8 @@ function addProduct(e) {
     category: document.getElementById('pCat').value,
     images,
     sizes,
+    stock,
+    sales: [],
     desc: document.getElementById('pDesc').value,
   };
   products.push(product);
@@ -587,17 +634,71 @@ function addProduct(e) {
   document.getElementById('pImageFile').value = '';
 }
 
+function stockSummary(p) {
+  const st = p.stock || {};
+  return p.sizes.map(s => {
+    const q = st[s] ?? 0;
+    const cls = q === 0 ? 'stock-out' : q <= 2 ? 'stock-low' : 'stock-ok';
+    return `${s}:<span class="stock-badge ${cls}">${q}</span>`;
+  }).join(' ');
+}
+
 function renderAdminList() {
   const list = document.getElementById('adminList');
+  const count = document.getElementById('localCount');
+  if (count) count.textContent = products.length;
   list.innerHTML = products.map(p => `
     <div class="admin-item">
-      <span><strong>${p.name}</strong> — Bs ${p.price.toFixed(2)} — ${p.category}</span>
-      <div style="display:flex;gap:.5rem;">
+      <div>
+        <strong>${p.name}</strong> — Bs ${p.price.toFixed(2)} — ${p.category}<br>
+        <span style="font-size:.75rem;color:#888;">${stockSummary(p)}</span>
+      </div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+        <button class="sell-btn" onclick="sellProduct(${p.id})">Vendido</button>
         <button class="edit" onclick="editProduct(${p.id})">Editar</button>
         <button class="del" onclick="deleteProduct(${p.id})">Eliminar</button>
       </div>
     </div>
   `).join('');
+}
+
+function sellProduct(id) {
+  const p = products.find(x => x.id === id);
+  if (!p) return;
+  if (!p.stock) p.stock = {};
+  if (!p.sales) p.sales = [];
+  const sizesWithStock = p.sizes.filter(s => (p.stock[s] || 0) > 0);
+  if (!sizesWithStock.length) { alert('No hay stock disponible de este producto'); return; }
+  const size = prompt(`¿Qué talla se vendió?\nDisponibles: ${sizesWithStock.join(', ')}`, sizesWithStock[0]);
+  if (!size || !p.sizes.includes(size)) { alert('Talla inválida'); return; }
+  if (!(p.stock[size] > 0)) { alert('No hay stock en esa talla'); return; }
+  const qty = parseInt(prompt('¿Cuántos se vendieron?', '1')) || 1;
+  p.stock[size] = Math.max(0, (p.stock[size] || 0) - qty);
+  p.sales.push({ size, qty, date: new Date().toISOString(), price: p.price });
+  saveProducts();
+  render();
+  renderAdminList();
+  document.querySelector('.admin-modal')?.scrollTo(0, 0);
+}
+
+function showReport() {
+  const totalSales = products.reduce((sum, p) => sum + ((p.sales || []).length), 0);
+  const totalRevenue = products.reduce((sum, p) => sum + (p.sales || []).reduce((s, sl) => s + sl.qty * sl.price, 0), 0);
+  const details = products.filter(p => (p.sales || []).length).map(p => {
+    const cnt = (p.sales || []).reduce((s, sl) => s + sl.qty, 0);
+    const rev = (p.sales || []).reduce((s, sl) => s + sl.qty * sl.price, 0);
+    return `<div class="admin-item"><span><strong>${p.name}</strong> — ${cnt} vendidos — Bs ${rev.toFixed(2)}</span></div>`;
+  }).join('');
+  document.getElementById('adminContent').innerHTML = `
+    <h2>Reporte de Ventas</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1.5rem;">
+      <div style="text-align:center;padding:1rem;border:1px solid #eee;"><strong style="font-size:1.5rem;">${totalSales}</strong><br><span style="font-size:.75rem;color:#888;">Ventas</span></div>
+      <div style="text-align:center;padding:1rem;border:1px solid #eee;"><strong style="font-size:1.5rem;">Bs ${totalRevenue.toFixed(2)}</strong><br><span style="font-size:.75rem;color:#888;">Ingresos</span></div>
+      <div style="text-align:center;padding:1rem;border:1px solid #eee;"><strong style="font-size:1.5rem;">${products.length}</strong><br><span style="font-size:.75rem;color:#888;">Productos</span></div>
+    </div>
+    ${details || '<p style="text-align:center;color:#888;">No hay ventas registradas</p>'}
+    <div style="text-align:center;margin-top:1.5rem;"><button onclick="showPanel()" style="background:#000;color:#fff;border:none;padding:.75rem 2rem;font-size:.8rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;font-family:inherit;">Volver al Panel</button></div>
+  `;
 }
 
 function deleteProduct(id) {
@@ -621,11 +722,30 @@ function editProduct(id) {
   window.scrollTo({ top: document.querySelector('.admin-modal').offsetTop, behavior: 'smooth' });
 }
 
+function checkPublished() {
+  const status = document.getElementById('syncStatus');
+  status.textContent = 'Verificando...';
+  fetch(JSON_URL + '?t=' + Date.now())
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(data => {
+      const pub = (data || []).length;
+      const local = products.length;
+      if (pub === local) {
+        status.innerHTML = `✅ Publicado: <strong>${pub}</strong> productos · Al día`;
+      } else {
+        status.innerHTML = `⚠️ Local: <strong>${local}</strong> · Publicado: <strong>${pub}</strong> · ${local > pub ? 'Exporta y sube el JSON' : 'Hay cambios nuevos en la web'}`;
+      }
+    })
+    .catch(() => {
+      status.innerHTML = '❌ No se pudo verificar (¿subiste productos.json a GitHub?)';
+    });
+}
+
 function exportJSON() {
   const data = products.map(p => ({
     id: p.id, name: p.name, price: p.price, category: p.category,
     images: (p.images || []).filter(url => url.startsWith('http') || url.startsWith('data:')),
-    sizes: p.sizes, desc: p.desc || ''
+    sizes: p.sizes, stock: p.stock || {}, sales: p.sales || [], desc: p.desc || ''
   }));
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
