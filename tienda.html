@@ -384,32 +384,30 @@ const ADMIN_PASS = 'admin123';
 
 let products = [];
 let currentCat = 'todos';
+const JSON_URL = 'productos.json';
 
 function loadProducts() {
-  const stored = localStorage.getItem(STORAGE_KEY);
-  if (stored) {
-    products = JSON.parse(stored);
+  const local = localStorage.getItem(STORAGE_KEY);
+  if (local) {
+    products = JSON.parse(local);
     products.forEach(p => { if (!p.images) { p.images = p.image ? [p.image] : []; delete p.image; } });
     saveProducts();
-  } else {
-    products = getDefaultProducts();
-    saveProducts();
+    render();
+    return;
   }
-  render();
-}
-
-function getDefaultProducts() {
-  return [
-    { id:1, name:'Camisa Premium Slim Fit', price:249, category:'camisas', images:[], sizes:['S','M','L','XL','2XL','3XL','4XL'], desc:'Camisa elegante de algodón premium. Corte slim fit.' },
-    { id:2, name:'Camisa Urbana Oversize', price:219, category:'camisas', images:[], sizes:['S','M','L','XL','2XL','3XL','4XL'], desc:'Camisa holgada estilo urbano. Ideal para looks casuales.' },
-    { id:3, name:'Camisa Linea Ejecutiva', price:289, category:'camisas', images:[], sizes:['S','M','L','XL','2XL','3XL','4XL'], desc:'Camisa formal de alta gama. Perfecta para oficina.' },
-    { id:4, name:'Polera Algodón Premium', price:149, category:'poleras', images:[], sizes:['S','M','L','XL','2XL'], desc:'Polera de algodón peinado. Suave y duradera.' },
-    { id:5, name:'Polera Estampada Edición', price:169, category:'poleras', images:[], sizes:['S','M','L','XL','2XL'], desc:'Diseño exclusivo ARSTYLE. Estampado de alta calidad.' },
-    { id:6, name:'Polera Cuello V', price:139, category:'poleras', images:[], sizes:['S','M','L','XL','2XL'], desc:'Polera clásica cuello V. Algodón 100%.' },
-    { id:7, name:'Pantalón Cargo Premium', price:289, category:'pantalones', images:[], sizes:['38','40','42','44','46','48'], desc:'Pantalón cargo con múltiples bolsillos. Tela resistente.' },
-    { id:8, name:'Pantalón Chino Slim', price:259, category:'pantalones', images:[], sizes:['38','40','42','44','46','48'], desc:'Pantalón chino corte slim. Ideal para look semiformal.' },
-    { id:9, name:'Pantalón Jean Recto', price:239, category:'pantalones', images:[], sizes:['38','40','42','44','46','48'], desc:'Jean clásico corte recto. Denim premium.' },
-  ];
+  fetch(JSON_URL + '?t=' + Date.now())
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(data => {
+      if (data && data.length) {
+        data.forEach(p => { if (!p.images) { p.images = []; } });
+        products = data;
+        saveProducts();
+        render();
+      }
+    })
+    .catch(() => {
+      products = []; render();
+    });
 }
 
 function saveProducts() {
@@ -535,6 +533,10 @@ function showPanel() {
       <div class="full"><button type="submit">Agregar Producto</button></div>
     </form>
     <div class="admin-list" id="adminList"></div>
+    <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid #eee;text-align:center;">
+      <button onclick="exportJSON()" style="background:#000;color:#fff;border:none;padding:.75rem 2rem;font-size:.8rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;font-family:inherit;">Exportar JSON para publicar</button>
+      <p style="font-size:.75rem;color:#888;margin-top:.5rem;">Descarga el archivo productos.json y súbelo a tu repositorio en GitHub para que los clientes vean los cambios.</p>
+    </div>
   `;
   renderAdminList();
 }
@@ -617,6 +619,20 @@ function editProduct(id) {
   document.getElementById('pDesc').value = p.desc || '';
   deleteProduct(id);
   window.scrollTo({ top: document.querySelector('.admin-modal').offsetTop, behavior: 'smooth' });
+}
+
+function exportJSON() {
+  const data = products.map(p => ({
+    id: p.id, name: p.name, price: p.price, category: p.category,
+    images: (p.images || []).filter(url => url.startsWith('http') || url.startsWith('data:')),
+    sizes: p.sizes, desc: p.desc || ''
+  }));
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'productos.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 
 loadProducts();
