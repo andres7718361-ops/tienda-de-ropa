@@ -1,1 +1,17 @@
-[]
+[
+  {
+    "id": 1783397147835,
+    "name": "camisa polo ",
+    "price": 199,
+    "category": "camisas",
+    "images": [],
+    "sizes": [
+      "L"
+    ],
+    "stock": {
+      "L": 1
+    },
+    "sales": [],
+    "desc": "camisa polo talla L color marfil original"
+  }
+]
