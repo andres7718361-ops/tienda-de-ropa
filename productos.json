@@ -1,25 +1,19 @@
-{
-    "id":  178338320033533,
-    "sizes":  [
-                  "S",
-                  "M",
-                  "L",
-                  "XL"
-              ],
-    "price":  120,
-    "category":  "camisas",
-    "images":  [
-
-               ],
-    "name":  "Camisa Premium",
-    "desc":  "Camisa de algodón premium",
-    "stock":  {
-                  "L":  10,
-                  "S":  10,
-                  "M":  10,
-                  "XL":  10
-              },
-    "sales":  [
-
-              ]
-}
+[
+  {
+    "id": 1783618751713,
+    "name": "polo",
+    "price": 100,
+    "category": "camisas",
+    "images": [
+      "https://raw.githubusercontent.com/andres7718361-ops/tienda-de-ropa/main/images/1783618745450-fsc1cz.webp"
+    ],
+    "sizes": [
+      "l"
+    ],
+    "stock": {
+      "l": 1
+    },
+    "sales": [],
+    "desc": ""
+  }
+]
