@@ -412,7 +412,7 @@ let currentCat = 'todos';
 const JSON_URL = 'productos.json';
 const GH_KEY = 'aastore_github';
 let ghConfig = JSON.parse(localStorage.getItem(GH_KEY) || '{"token":"","owner":"andres7718361-ops","repo":"tienda-de-ropa"}');
-let uploadingImages = [];
+
 
 function loadProducts() {
   const localRaw = localStorage.getItem(STORAGE_KEY);
@@ -563,25 +563,19 @@ function showPanel() {
   document.getElementById('adminContent').innerHTML = `
     <h2>Panel de Administración</h2>
 
-    <div class="github-setup">
+    <div class="github-setup" style="font-size:.8rem;">
       <label>Conexión GitHub</label>
-      <input type="password" id="ghToken" value="${gh.token}" placeholder="GitHub Token (classic)" oninput="updateGh()">
+      <input type="password" id="ghToken" value="${gh.token}" placeholder="Token" oninput="updateGh()" style="font-size:.8rem;">
       <div style="display:flex;gap:.5rem;">
-        <input type="text" id="ghOwner" value="${gh.owner}" placeholder="Usuario" style="flex:1;" oninput="updateGh()">
-        <input type="text" id="ghRepo" value="${gh.repo}" placeholder="Repositorio" style="flex:1;" oninput="updateGh()">
+        <input type="text" id="ghOwner" value="${gh.owner}" placeholder="Usuario" style="flex:1;font-size:.8rem;" oninput="updateGh()">
+        <input type="text" id="ghRepo" value="${gh.repo}" placeholder="Repo" style="flex:1;font-size:.8rem;" oninput="updateGh()">
       </div>
-      <div class="status" id="ghStatus">${gh.token ? '✅ Configurado' : '⚠️ Ingresa tu GitHub Token'}</div>
-      <details style="font-size:.75rem;color:#888;margin-top:.5rem;cursor:pointer;">
-        <summary>¿Cómo obtener tu Token?</summary>
-        <p style="margin-top:.25rem;">1. Ve a GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)</p>
-        <p>2. Genera uno nuevo con scope <strong>repo</strong></p>
-        <p>3. Cópialo aquí (solo se guarda en tu navegador)</p>
-      </details>
+      <div class="status" id="ghStatus" style="font-size:.75rem;">${gh.token ? '✅ Listo' : '⚠️ Sin token'}</div>
     </div>
 
-    <form class="admin-form" onsubmit="addProduct(event)">
-      <div class="full"><label>Nombre del producto</label><input type="text" id="pName" required></div>
-      <div><label>Precio (Bs)</label><input type="number" id="pPrice" step="0.01" required></div>
+    <form class="admin-form" onsubmit="addProduct(event)" style="grid-template-columns:1fr 1fr;">
+      <div class="full"><label>Nombre</label><input type="text" id="pName" required placeholder="Ej: Camisa Premium"></div>
+      <div><label>Precio (Bs)</label><input type="number" id="pPrice" step="0.01" required placeholder="120"></div>
       <div><label>Categoría</label>
         <select id="pCat">
           <option value="camisas">Camisas</option>
@@ -589,26 +583,28 @@ function showPanel() {
           <option value="pantalones">Pantalones</option>
         </select>
       </div>
-      <div class="full"><label>Imágenes — Subir a GitHub</label><input type="file" id="pImageFile" accept="image/*" multiple onchange="uploadImages(event)"><div id="pImagePreviews" style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.5rem;"></div><div class="upload-progress" id="uploadProgress"></div></div>
-      <div class="full"><label>O URLs directas (una por línea)</label><textarea id="pImageUrls" rows="2" placeholder="https://raw.githubusercontent.com/..."></textarea></div>
-      <div class="full"><label>Tallas (separadas por coma)</label><input type="text" id="pSizes" placeholder="Ej: S, M, L, XL" required oninput="genStockFields()"></div>
+      <div class="full"><label>Tallas (ej: S,M,L,XL)</label><input type="text" id="pSizes" placeholder="S, M, L, XL" required oninput="genStockFields()"></div>
       <div class="full" id="stockFields" style="display:none;">
         <label>Stock por talla</label>
         <div id="stockInputs" style="display:flex;gap:.5rem;flex-wrap:wrap;"></div>
       </div>
-      <div class="full"><label>Descripción</label><textarea id="pDesc"></textarea></div>
-      <div class="full"><button type="submit">Agregar Producto</button></div>
+      <div class="full"><label>URL imagen (opcional)</label><textarea id="pImageUrls" rows="1" placeholder="https://..."></textarea></div>
+      <div class="full"><label>Descripción (opcional)</label><textarea id="pDesc" rows="1" placeholder="Breve descripción"></textarea></div>
+      <div class="full" style="display:flex;gap:.5rem;">
+        <button type="submit" style="flex:1;">+ Agregar</button>
+        <button type="button" onclick="event.preventDefault();showQuickSale()" style="flex:1;background:#4caf50;color:#fff;border:none;font-size:.8rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;font-family:inherit;">Venta Rápida</button>
+      </div>
     </form>
     <div class="admin-list" id="adminList"></div>
-    <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid #eee;text-align:center;">
-      <p style="font-size:.85rem;font-weight:500;margin-bottom:.75rem;" id="syncStatus">Cargando...</p>
-      <div style="display:flex;gap:.5rem;flex-wrap:wrap;justify-content:center;margin-bottom:.75rem;">
-        <button onclick="showReport()" style="background:#fff;color:#000;border:1px solid #000;padding:.5rem 1.5rem;font-size:.75rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;font-family:inherit;">Reporte de Ventas</button>
-        <button onclick="checkPublished()" style="background:#000;color:#fff;border:none;padding:.5rem 1.5rem;font-size:.75rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;font-family:inherit;">Verificar</button>
-        <button onclick="exportJSON()" style="background:#000;color:#fff;border:none;padding:.5rem 1.5rem;font-size:.75rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;font-family:inherit;">Exportar JSON</button>
+    <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid #eee;text-align:center;">
+      <p style="font-size:.8rem;font-weight:500;margin-bottom:.5rem;" id="syncStatus">Cargando...</p>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;justify-content:center;margin-bottom:.5rem;">
+        <button onclick="showReport()" style="background:#fff;color:#000;border:1px solid #000;padding:.4rem 1rem;font-size:.7rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;font-family:inherit;">Reporte</button>
+        <button onclick="checkPublished()" style="background:#000;color:#fff;border:none;padding:.4rem 1rem;font-size:.7rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;font-family:inherit;">Verificar</button>
+        <button onclick="exportJSON()" style="background:#000;color:#fff;border:none;padding:.4rem 1rem;font-size:.7rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;font-family:inherit;">Exportar</button>
       </div>
-      <button class="publish-btn" onclick="publishToGitHub()" id="publishBtn">🚀 Publicar cambios</button>
-      <div class="publish-result" id="publishResult"></div>
+      <button class="publish-btn" onclick="publishToGitHub()" id="publishBtn" style="padding:.7rem;">🚀 Publicar</button>
+      <div class="publish-result" id="publishResult" style="font-size:.75rem;"></div>
     </div>
   `;
   renderAdminList();
@@ -644,85 +640,11 @@ function genStockFields() {
   `).join('');
 }
 
-async function uploadImages(e) {
-  const files = Array.from(e.target.files);
-  const container = document.getElementById('pImagePreviews');
-  const progress = document.getElementById('uploadProgress');
-  const { token, owner, repo } = ghConfig;
-
-  if (!token || !owner || !repo) {
-    progress.innerHTML = '<span style="color:#c62828;">⚠️ Configura GitHub primero (token, usuario, repo)</span>';
-    return;
-  }
-
-  for (const file of files) {
-    const previewDiv = document.createElement('div');
-    previewDiv.style.cssText = 'position:relative;width:72px;height:72px;';
-    const spinner = document.createElement('div');
-    spinner.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.8);font-size:1.2rem;';
-    spinner.textContent = '⏳';
-    previewDiv.appendChild(spinner);
-    container.appendChild(previewDiv);
-
-    try {
-      progress.innerHTML = `<span>Subiendo ${file.name}...</span><div class="bar"><div class="fill" style="width:50%"></div></div>`;
-      const url = await uploadToGitHub(file);
-      uploadingImages.push({ file: file.name, url });
-      previewDiv.innerHTML = '';
-      const img = document.createElement('img');
-      img.src = url;
-      img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:4px;border:1px solid #ddd;';
-      img.title = `Click para copiar URL`;
-      img.style.cursor = 'pointer';
-      img.onclick = () => { navigator.clipboard.writeText(url); alert('URL copiada'); };
-      previewDiv.appendChild(img);
-      progress.innerHTML = `<span style="color:#2e7d32;">✅ ${file.name} subida</span>`;
-    } catch (err) {
-      previewDiv.remove();
-      progress.innerHTML = `<span style="color:#c62828;">❌ Error: ${err.message}</span>`;
-    }
-  }
-  setTimeout(() => { progress.innerHTML = ''; }, 2000);
-}
-
-async function uploadToGitHub(file) {
-  const { token, owner, repo } = ghConfig;
-  const ext = file.name.split('.').pop() || 'jpg';
-  const filename = `images/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-
-  const reader = new FileReader();
-  const base64 = await new Promise((resolve, reject) => {
-    reader.onload = () => resolve(reader.result.split(',')[1]);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-
-  const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${filename}`, {
-    method: 'PUT',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      message: `Add image ${filename}`,
-      content: base64,
-    })
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || `HTTP ${res.status}`);
-  }
-
-  return `https://raw.githubusercontent.com/${owner}/${repo}/main/${filename}`;
-}
 
 function addProduct(e) {
   e.preventDefault();
   const sizes = document.getElementById('pSizes').value.split(',').map(s => s.trim()).filter(Boolean);
-  let images = uploadingImages.map(u => u.url);
   const urls = document.getElementById('pImageUrls').value.split('\n').map(s => s.trim()).filter(Boolean);
-  images = [...images, ...urls];
   const stock = {};
   sizes.forEach(s => {
     const input = document.getElementById('stock_' + s);
@@ -733,7 +655,7 @@ function addProduct(e) {
     name: document.getElementById('pName').value,
     price: parseFloat(document.getElementById('pPrice').value),
     category: document.getElementById('pCat').value,
-    images,
+    images: urls,
     sizes,
     stock,
     sales: [],
@@ -744,9 +666,41 @@ function addProduct(e) {
   render();
   renderAdminList();
   e.target.reset();
-  uploadingImages = [];
-  document.getElementById('pImagePreviews').innerHTML = '';
-  document.getElementById('pImageFile').value = '';
+}
+
+function showQuickSale() {
+  const list = products.map(p => `
+    <div class="admin-item" style="flex-direction:column;align-items:stretch;gap:.5rem;padding:.5rem 0;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <strong>${p.name}</strong> Bs ${p.price.toFixed(2)}
+      </div>
+      <div style="display:flex;gap:.3rem;flex-wrap:wrap;">
+        ${p.sizes.map(s => {
+          const q = (p.stock || {})[s] || 0;
+          const disabled = q === 0 ? 'disabled' : '';
+          return `<button onclick="quickSell(${p.id},'${s}')" style="flex:1;padding:.5rem;background:${q > 0 ? '#4caf50' : '#eee'};color:${q > 0 ? '#fff' : '#aaa'};border:none;border-radius:4px;font-size:.85rem;font-weight:600;cursor:pointer;font-family:inherit;${disabled ? 'opacity:.5;' : ''}">${s} (${q})</button>`;
+        }).join('')}
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('adminContent').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+      <h2 style="font-size:1.1rem;margin:0;">💥 Venta Rápida</h2>
+      <button onclick="showPanel()" style="background:none;border:1px solid #ddd;padding:.3rem .8rem;cursor:pointer;font-family:inherit;font-size:.75rem;">← Volver</button>
+    </div>
+    ${list || '<p style="text-align:center;padding:2rem;color:#aaa;">No hay productos. Agrega uno primero.</p>'}
+  `;
+}
+
+function quickSell(id, size) {
+  const p = products.find(x => x.id === id);
+  if (!p || !p.stock || !(p.stock[size] > 0)) return;
+  p.stock[size]--;
+  if (!p.sales) p.sales = [];
+  p.sales.push({ size, qty: 1, date: new Date().toISOString(), price: p.price });
+  saveProducts();
+  render();
+  showQuickSale();
 }
 
 function stockSummary(p) {
