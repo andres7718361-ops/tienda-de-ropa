@@ -1,23 +1,53 @@
 [
-    {
-        "id": 178338320033533,
-        "name": "Camisa Premium",
-        "price": 120,
-        "category": "camisas",
-        "images": [],
-        "sizes": [
-            "S",
-            "M",
-            "L",
-            "XL"
-        ],
-        "stock": {
-            "S": 10,
-            "M": 10,
-            "L": 10,
-            "XL": 10
-        },
-        "sales": [],
-        "desc": "Camisa de algodón premium"
-    }
+  {
+    "id": 1783618751713,
+    "name": "polo",
+    "price": 100,
+    "category": "camisas",
+    "images": [
+      "https://raw.githubusercontent.com/andres7718361-ops/tienda-de-ropa/main/images/1783618745450-fsc1cz.webp"
+    ],
+    "sizes": [
+      "l"
+    ],
+    "stock": {
+      "l": 1
+    },
+    "sales": [],
+    "desc": ""
+  },
+  {
+    "id": 1783618927338,
+    "name": "polo ",
+    "price": 100,
+    "category": "camisas",
+    "images": [
+      "https://raw.githubusercontent.com/andres7718361-ops/tienda-de-ropa/main/images/1783618904308-1wtnn8.webp"
+    ],
+    "sizes": [
+      "s"
+    ],
+    "stock": {
+      "s": 1
+    },
+    "sales": [],
+    "desc": "dwkjssjc"
+  },
+  {
+    "id": 1783619315811,
+    "name": "polo",
+    "price": 100,
+    "category": "camisas",
+    "images": [
+      "https://raw.githubusercontent.com/andres7718361-ops/tienda-de-ropa/main/images/1783619305977-3k7h9n.webp"
+    ],
+    "sizes": [
+      "m"
+    ],
+    "stock": {
+      "m": 1
+    },
+    "sales": [],
+    "desc": ""
+  }
 ]
