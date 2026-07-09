@@ -415,26 +415,36 @@ let ghConfig = JSON.parse(localStorage.getItem(GH_KEY) || '{"token":"","owner":"
 let uploadingImages = [];
 
 function loadProducts() {
-  const local = localStorage.getItem(STORAGE_KEY);
-  if (local) {
-    products = JSON.parse(local);
-    products.forEach(p => { if (!p.images) { p.images = p.image ? [p.image] : []; delete p.image; } if (!p.stock) { p.stock = {}; p.sizes.forEach(s => { p.stock[s] = 10; }); } if (!p.sales) p.sales = []; });
-    saveProducts();
-    render();
-    return;
-  }
+  const localRaw = localStorage.getItem(STORAGE_KEY);
+  let localProducts = localRaw ? JSON.parse(localRaw) : [];
+
   fetch(JSON_URL + '?t=' + Date.now())
     .then(r => r.ok ? r.json() : Promise.reject())
     .then(data => {
       if (data && data.length) {
-        data.forEach(p => { if (!p.images) { p.images = []; } if (!p.stock) { p.stock = {}; } if (!p.sales) p.sales = []; });
-        products = data;
-        saveProducts();
-        render();
+        const ghIds = new Set(data.map(p => p.id));
+        const localOnly = localProducts.filter(p => !ghIds.has(p.id));
+        products = [...data, ...localOnly];
+      } else {
+        products = localProducts;
       }
+      products.forEach(p => {
+        if (!p.images) p.images = [];
+        if (!p.stock) { p.stock = {}; p.sizes.forEach(s => { p.stock[s] = 10; }); }
+        if (!p.sales) p.sales = [];
+      });
+      saveProducts();
+      render();
     })
     .catch(() => {
-      products = []; render();
+      products = localProducts;
+      products.forEach(p => {
+        if (!p.images) p.images = [];
+        if (!p.stock) { p.stock = {}; p.sizes.forEach(s => { p.stock[s] = 10; }); }
+        if (!p.sales) p.sales = [];
+      });
+      saveProducts();
+      render();
     });
 }
 
@@ -591,13 +601,13 @@ function showPanel() {
     </form>
     <div class="admin-list" id="adminList"></div>
     <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid #eee;text-align:center;">
-      <p style="font-size:.85rem;font-weight:500;margin-bottom:.75rem;" id="syncStatus">Productos locales: <strong id="localCount">0</strong></p>
+      <p style="font-size:.85rem;font-weight:500;margin-bottom:.75rem;" id="syncStatus">Cargando...</p>
       <div style="display:flex;gap:.5rem;flex-wrap:wrap;justify-content:center;margin-bottom:.75rem;">
         <button onclick="showReport()" style="background:#fff;color:#000;border:1px solid #000;padding:.5rem 1.5rem;font-size:.75rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;font-family:inherit;">Reporte de Ventas</button>
         <button onclick="checkPublished()" style="background:#000;color:#fff;border:none;padding:.5rem 1.5rem;font-size:.75rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;font-family:inherit;">Verificar</button>
         <button onclick="exportJSON()" style="background:#000;color:#fff;border:none;padding:.5rem 1.5rem;font-size:.75rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;font-family:inherit;">Exportar JSON</button>
       </div>
-      <button class="publish-btn" onclick="publishToGitHub()" id="publishBtn">🚀 Publicar en GitHub</button>
+      <button class="publish-btn" onclick="publishToGitHub()" id="publishBtn">🚀 Publicar cambios</button>
       <div class="publish-result" id="publishResult"></div>
     </div>
   `;
@@ -750,8 +760,23 @@ function stockSummary(p) {
 
 function renderAdminList() {
   const list = document.getElementById('adminList');
-  const count = document.getElementById('localCount');
-  if (count) count.textContent = products.length;
+  const status = document.getElementById('syncStatus');
+  if (status) {
+    const total = products.length;
+    status.innerHTML = `Total: <strong>${total}</strong> productos · <span style="color:#e65100;">⚠️ Debes publicar para que se vean en todos tus dispositivos</span>`;
+    fetch(JSON_URL + '?t=' + Date.now())
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(data => {
+        const pub = (data || []).length;
+        const pending = total - pub;
+        if (pending === 0) {
+          status.innerHTML = `✅ Publicado: <strong>${pub}</strong> productos · Todo sincronizado`;
+        } else if (pending > 0) {
+          status.innerHTML = `⚠️ <strong>${pending}</strong> producto(s) sin publicar · Publica para que se vean en todos tus dispositivos`;
+        }
+      })
+      .catch(() => {});
+  }
   list.innerHTML = products.map(p => `
     <div class="admin-item">
       <div>
@@ -836,9 +861,11 @@ function checkPublished() {
       const pub = (data || []).length;
       const local = products.length;
       if (pub === local) {
-        status.innerHTML = `✅ Publicado: <strong>${pub}</strong> productos · Al día`;
+        status.innerHTML = `✅ Todo sincronizado: <strong>${pub}</strong> productos publicados`;
+      } else if (local > pub) {
+        status.innerHTML = `⚠️ <strong>${local - pub}</strong> producto(s) sin publicar · Haz clic en "Publicar cambios"`;
       } else {
-        status.innerHTML = `⚠️ Local: <strong>${local}</strong> · Publicado: <strong>${pub}</strong> · ${local > pub ? 'Exporta y sube el JSON' : 'Hay cambios nuevos en la web'}`;
+        status.innerHTML = `ℹ️ Web tiene <strong>${pub}</strong> productos, local tiene <strong>${local}</strong> · Recarga la página`;
       }
     })
     .catch(() => {
@@ -914,7 +941,8 @@ async function publishToGitHub() {
       throw new Error(err.message || `HTTP ${res.status}`);
     }
 
-    result.innerHTML = '<span style="color:#2e7d32;">✅ ¡Publicado exitosamente! La página se actualizará en unos minutos.</span>';
+    result.innerHTML = '<span style="color:#2e7d32;">✅ ¡Publicado! Ya disponible en todos los dispositivos.</span>';
+    setTimeout(() => renderAdminList(), 500);
 
     // Clear local base64 images after successful publish
     products.forEach(p => {
