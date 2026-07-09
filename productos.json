@@ -15,5 +15,22 @@
     },
     "sales": [],
     "desc": ""
+  },
+  {
+    "id": 1783618927338,
+    "name": "polo ",
+    "price": 100,
+    "category": "camisas",
+    "images": [
+      "https://raw.githubusercontent.com/andres7718361-ops/tienda-de-ropa/main/images/1783618904308-1wtnn8.webp"
+    ],
+    "sizes": [
+      "s"
+    ],
+    "stock": {
+      "s": 1
+    },
+    "sales": [],
+    "desc": "dwkjssjc"
   }
 ]
